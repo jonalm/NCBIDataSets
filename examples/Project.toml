@@ -1,0 +1,12 @@
+[deps]
+FASTX = "c2308a5c-f048-11e8-3e8a-31650f418d12"
+LazyFiles = "169830f2-f8ed-426a-92bf-62bee49d67e9"
+NCBIDataSets = "432b6e00-ba8b-4061-8baa-fe6251e6418d"
+
+[sources]
+# Local checkout: the AbstractLazyBlob extension interface this example uses isn't
+# on the published URL rev yet. Switch back to
+#   LazyFiles = {url = "https://github.com/jonalm/LazyFiles.jl"}
+# once that interface is pushed/tagged.
+LazyFiles = {path = "../../../LazyFiles.jl"}
+NCBIDataSets = {path = ".."}
