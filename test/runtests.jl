@@ -44,6 +44,56 @@ end
         @test_throws ArgumentError N._split_id(N._GENOME_IDS, (accession = "x", taxon = "y")) # two
     end
 
+    @testset "argv assembly (_DatasetsCommand -> _argv)" begin
+        # summary genome: id-kind + fixed --as-json-lines + a passthrough flag
+        @test N._argv(N._DatasetsCommand("summary", ["genome"], N._GENOME_IDS;
+                  fixed = ["--as-json-lines"], accession = "GCF_1", limit = 10)) ==
+              ["summary", "genome", "accession", "GCF_1", "--as-json-lines", "--limit", "10"]
+
+        # download genome: id-kind + fixed --filename (output path known)
+        @test N._argv(N._DatasetsCommand("download", ["genome"], N._GENOME_IDS;
+                  fixed = ["--filename", "x.zip"], accession = "GCF_1")) ==
+              ["download", "genome", "accession", "GCF_1", "--filename", "x.zip"]
+
+        # multiple accessions expand after the id-kind subcommand word
+        @test N._argv(N._DatasetsCommand("download", ["genome"], N._GENOME_IDS;
+                  fixed = ["--filename", "x.zip"], accession = ["GCF_1", "GCF_2"])) ==
+              ["download", "genome", "accession", "GCF_1", "GCF_2", "--filename", "x.zip"]
+
+        # gene ambiguity: symbol is the id, taxon demoted to a --taxon filter flag
+        @test N._argv(N._DatasetsCommand("summary", ["gene"], N._GENE_IDS;
+                  fixed = ["--as-json-lines"], ambiguous = (:taxon,),
+                  symbol = "BRCA1", taxon = "human")) ==
+              ["summary", "gene", "symbol", "BRCA1", "--as-json-lines", "--taxon", "human"]
+
+        # gene taxon alone -> the identifier (no demotion)
+        @test N._argv(N._DatasetsCommand("download", ["gene"], N._GENE_IDS;
+                  ambiguous = (:taxon,), taxon = "human")) ==
+              ["download", "gene", "taxon", "human"]
+
+        # positional (virus protein): a bare value, no id-kind subcommand word
+        @test N._argv(N._DatasetsCommand("download", ["virus", "protein"],
+                  N._Positional(["spike"]); fixed = ["--filename", "x.zip"], refseq = true)) ==
+              ["download", "virus", "protein", "spike", "--filename", "x.zip", "--refseq"]
+
+        # none (rehydrate): no identifier, --directory carried as a fixed flag
+        @test N._argv(N._DatasetsCommand("rehydrate", String[], nothing;
+                  fixed = ["--directory", "/tmp/pkg"], max_workers = 10)) ==
+              ["rehydrate", "--directory", "/tmp/pkg", "--max-workers", "10"]
+
+        # `ambiguous` is meaningless for a positional/none identifier and must be
+        # ignored, never lowered to a bogus `--ambiguous` flag
+        @test N._argv(N._DatasetsCommand("download", ["virus", "protein"],
+                  N._Positional(["spike"]); fixed = ["--filename", "x.zip"],
+                  ambiguous = (:taxon,), refseq = true)) ==
+              ["download", "virus", "protein", "spike", "--filename", "x.zip", "--refseq"]
+
+        # id-kinds must be a Tuple: a non-Tuple can't slide into the positional
+        # constructor and silently drop the identifier — it's a hard MethodError
+        @test_throws MethodError N._download(["genome"], :accession)
+        @test_throws MethodError N._summary(["genome"], nothing)
+    end
+
     @testset "gene taxon ambiguity" begin
         # taxon alone -> identifier (`gene taxon human`)
         idsub, idval, rest = N._split_id(N._GENE_IDS, (taxon = "human",); ambiguous = (:taxon,))

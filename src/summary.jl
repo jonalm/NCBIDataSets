@@ -3,15 +3,10 @@
 # `--as-json-lines` is forced so each output line is one record for uniform
 # parsing. Same curated-explicit-kwargs + passthrough pattern as download_*.
 
-function _summary(subcmd::Vector{String}, idkinds; ambiguous = (), api_key = nothing, kw...)
-    idsub, idval, rest = _split_id(idkinds, kw; ambiguous)
-    args = String["summary"]
-    append!(args, subcmd)
-    push!(args, idsub)
-    append!(args, _idvalues(idval))
-    push!(args, "--as-json-lines")
-    append!(args, buildflags(; rest...))
-    return _parse_jsonl(_run(_datasets_cmd(), args; env = _apikey_env(api_key)))
+function _summary(subcmd::Vector{String}, idkinds::Tuple; ambiguous = (), api_key = nothing, kw...)
+    cmd = _DatasetsCommand("summary", subcmd, idkinds;
+                           fixed = String["--as-json-lines"], ambiguous, kw...)
+    return _parse_jsonl(_invoke(cmd; api_key))
 end
 
 """

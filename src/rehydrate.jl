@@ -13,8 +13,8 @@ rehydrate(pkg)
 """
 function rehydrate(p::DataPackage; api_key = nothing, kw...)
     dir = _ensure_dir(p)
-    args = String["rehydrate", "--directory", dir.path]
-    append!(args, buildflags(; kw...))
-    _run(_datasets_cmd(), args; progress = true, env = _apikey_env(api_key))
+    cmd = _DatasetsCommand("rehydrate", String[], nothing;
+                           fixed = String["--directory", dir.path], kw...)
+    _invoke(cmd; progress = true, api_key)
     return dir
 end
